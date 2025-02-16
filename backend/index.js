@@ -10,7 +10,6 @@ app.use(express.json());
 app.use(cors());
 require('dotenv').config();
 
-
 const saltRounds = 10; // Salt rounds for bcrypt
 const secretKey = 'your-secret-key'; // Define your JWT secret key
 
@@ -67,7 +66,6 @@ app.post('/signup', async (req, res) => {
 });
 
 // Route to sign in an existing user and generate a token
-
 app.post('/signin', async (req, res) => {
   const { email, password } = req.body;
 
@@ -87,8 +85,8 @@ app.post('/signin', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Generate JWT token using the user's ID
-    const token = jwt.sign({ id: user.id }, secretKey, { expiresIn: '1h' });
+    // Generate JWT token using the user's email
+    const token = jwt.sign({ email: user.email }, secretKey, { expiresIn: '1h' });
 
     // Send the token back in the response
     res.status(200).json({ token, message: 'Signin successful' });
@@ -122,6 +120,10 @@ app.post('/home', authenticateToken, async (req, res) => {
   const { injury, age, gender } = req.body;
   const email = req.email; // Get the email from the authenticated token
 
+  if (!email) {
+    return res.status(400).json({ error: 'Email is not available in token' });
+  }
+
   try {
     // Find the user by email
     const user = await prisma.user.findUnique({
@@ -148,7 +150,6 @@ app.post('/home', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Error saving health information', details: error.message });
   }
 });
-
 
 const PORT = 3001;
 app.listen(PORT, () => {
