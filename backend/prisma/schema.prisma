@@ -1,22 +1,18 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "postgresql" 
+  url      = env("DATABASE_URL") // This reads the DATABASE_URL from your .env file
 }
 
-
 model User {
-  id       Int      @id @default(autoincrement()) // Auto-incrementing ID
-  email    String   @unique                      // Unique email
-  password String?                               // Password (consider hashing in production)
-  createdAt DateTime @default(now())
+  id        Int      @id @default(autoincrement()) // Auto-incrementing ID
+  email     String   @unique                      // Unique email
+  password  String                               // Password
+  age       Int?                                 // Optional age field
+  gender    String?                              // Optional gender field
+  injuries  String?                              // Optional injuries field
+  createdAt DateTime @default(now())              // Timestamp for when the record was created
 }
