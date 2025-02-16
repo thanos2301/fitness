@@ -115,40 +115,41 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
-// Route to save health data (protected by JWT authentication)
+const axios = require("axios");
+
 app.post('/home', authenticateToken, async (req, res) => {
-  const { injury, age, gender } = req.body;
-  const email = req.email; // Get the email from the authenticated token
+    const { injury, age, gender } = req.body;
+    const email = req.email;
 
-  if (!email) {
-    return res.status(400).json({ error: 'Email is not available in token' });
-  }
-
-  try {
-    // Find the user by email
-    const user = await prisma.user.findUnique({
-      where: { email }
-    });
-
-    if (!user) {
-      return res.status(400).json({ error: 'User not found.' });
+    if (!email) {
+        return res.status(400).json({ error: "Email not available in token" });
     }
 
-    // Save the health data associated with the user's email
-    const healthData = await prisma.healthInfo.create({
-      data: {
-        userEmail: email, // Associate health data with user's email
-        injury,
-        age,
-        gender
-      }
-    });
+    try {
+        // Save the input data in the database
+        const healthData = await prisma.healthInfo.create({
+            data: {
+                userEmail: email,
+                injury,
+                age,
+                gender,
+            },
+        });
 
-    res.status(201).json({ message: 'Health information saved successfully', healthData });
-  } catch (error) {
-    console.error('Error saving health information:', error);
-    res.status(500).json({ error: 'Error saving health information', details: error.message });
-  }
+        // Send the data to the ML model API
+        const mlResponse = await axios.post("http://localhost:5000/predict", {
+            age,
+            gender,
+            injury,
+        });
+
+        const { remedy, exercise } = mlResponse.data;
+
+        res.status(200).json({ message: "Prediction successful", remedy, exercise });
+    } catch (error) {
+        console.error("Error:", error);
+        res.status(500).json({ error: "Error processing request", details: error.message });
+    }
 });
 
 const PORT = 3001;
