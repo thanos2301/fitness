@@ -64,7 +64,6 @@ app.post('/signup', async (req, res) => {
     res.status(500).json({ error: 'Error signing up user', details: error.message });
   }
 });
-
 // Route to sign in an existing user and generate a token
 app.post('/signin', async (req, res) => {
   const { email, password } = req.body;
@@ -85,8 +84,8 @@ app.post('/signin', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Generate JWT token using the user's email
-    const token = jwt.sign({ email: user.email }, secretKey, { expiresIn: '1h' });
+    // Generate JWT token using the user's email and userId
+    const token = jwt.sign({ email: user.email, userId: user.id }, secretKey, { expiresIn: '1h' });
 
     // Send the token back in the response
     res.status(200).json({ token, message: 'Signin successful' });
@@ -96,6 +95,7 @@ app.post('/signin', async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
 
 // Middleware to verify JWT
 const authenticateToken = (req, res, next) => {
@@ -109,47 +109,59 @@ const authenticateToken = (req, res, next) => {
   try {
     const decodedToken = jwt.verify(token, secretKey);
     req.email = decodedToken.email; // Attach email to the request object
+    req.userId = decodedToken.userId; // Attach userId to the request object
     next(); // Proceed to the next middleware or route
   } catch (err) {
     return res.status(403).json({ error: 'Invalid or expired token' });
   }
 };
 
+
 const axios = require("axios");
 
 app.post('/home', authenticateToken, async (req, res) => {
-    const { injury, age, gender } = req.body;
-    const email = req.email;
+  const { injury, age, gender } = req.body;
+  const userId = req.userId; // Extract userId from token
 
-    if (!email) {
-        return res.status(400).json({ error: "Email not available in token" });
-    }
+  if (!userId) {
+      return res.status(400).json({ error: "User ID not available in token" });
+  }
 
-    try {
-        // Save the input data in the database
-        const healthData = await prisma.healthInfo.create({
-            data: {
-                userEmail: email,
-                injury,
-                age,
-                gender,
-            },
-        });
+  try {
+      // Update the user's info (age, gender, injuries) based on userId
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          age: parseInt(age, 10), // Ensure age is an integer
+          gender: gender,
+          injuries: injury,
+        },
+      });
+      
 
-        // Send the data to the ML model API
-        const mlResponse = await axios.post("http://localhost:5000/predict", {
-            age,
-            gender,
-            injury,
-        });
+      console.log("User updated:", updatedUser);
 
-        const { remedy, exercise } = mlResponse.data;
+      // Save the health data separately in HealthInfo
+      
 
-        res.status(200).json({ message: "Prediction successful", remedy, exercise });
-    } catch (error) {
-        console.error("Error:", error);
-        res.status(500).json({ error: "Error processing request", details: error.message });
-    }
+     
+
+      // Send the data to the ML model API
+      console.log("Sending request to ML model...");
+      
+     
+
+    
+
+      res.status(200).json({ message: "Prediction successful" });
+  } catch (error) {
+      console.error("Error processing request:", error);
+      res.status(500).json({
+          error: "Error processing request",
+          details: error.message,
+          stack: error.stack,
+      });
+  }
 });
 
 const PORT = 3001;
